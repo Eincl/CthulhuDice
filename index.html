@@ -25,6 +25,12 @@
     touch-action:manipulation;
     overscroll-behavior-y:contain;   /* iOS 당겨서 새로고침이 흔들기를 가로채지 않게 */
   }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(ellipse at 50% 42%,transparent 0 31%,rgba(1,5,8,.22) 58%,rgba(0,0,0,.82) 100%),
+      linear-gradient(90deg,rgba(0,0,0,.38),transparent 16% 84%,rgba(0,0,0,.38));
+  }
   #abyss{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
   body::after{ /* 필름 그레인 */
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.055;z-index:20;
@@ -43,9 +49,10 @@
     50%{transform:translate(-5px,2px) rotate(-.5deg)}
   }
 
-  header{position:relative;z-index:2;text-align:center;padding:16px 16px 2px}
-  h1{margin:0;font-size:14px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;
-     color:#8fc8c4;text-indent:.4em;text-shadow:0 0 22px rgba(95,240,212,.25)}
+  header{position:relative;z-index:2;text-align:center;padding:18px 16px 2px}
+  .sigil{width:34px;height:34px;margin:0 auto 7px;color:#6da6a0;opacity:.72;filter:drop-shadow(0 0 8px rgba(95,240,212,.25))}
+  h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.42em;text-transform:uppercase;
+     color:#a8d5ce;text-indent:.42em;text-shadow:0 0 22px rgba(95,240,212,.25)}
   .rlyeh{margin:7px 0 0;font-size:9.5px;letter-spacing:.3em;color:#3f5f63;text-indent:.3em;font-style:italic}
   .sub{margin:4px 0 0;font-size:11px;letter-spacing:.22em;color:var(--dim);text-indent:.22em}
 
@@ -56,6 +63,9 @@
     height:var(--sh);width:calc(var(--sh) * .62);
     touch-action:none;   /* 드래그가 페이지 스크롤로 먹히는 걸 막는다 */
   }
+  .stage::before,.stage::after{content:"";position:absolute;top:52%;width:26vw;max-width:155px;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(111,180,171,.3));pointer-events:none}
+  .stage::before{right:100%}.stage::after{left:100%;transform:scaleX(-1)}
   .stage:active{cursor:grabbing}
   canvas{display:block;width:100%;height:100%}
 
@@ -94,8 +104,16 @@
   .whisper.fumble{color:#a8595a}
   .whisper.crit{color:#9a8757}
 
-  .panel{position:relative;z-index:2;width:min(92vw,420px);padding:0 6px 24px;
-         display:flex;flex-direction:column;gap:13px}
+  /* 라벨은 패널 밖에 둔다. clip-path는 자기 의사 요소까지 잘라내기 때문이다 */
+  .panelWrap{position:relative;z-index:2;width:min(92vw,440px)}
+  .panelWrap::before{content:"THE ORACLE OF R'LYEH";position:absolute;z-index:1;
+    left:50%;top:-6px;transform:translateX(-50%);
+    padding:0 10px;background:#071015;color:#496c6b;font-size:8px;letter-spacing:.32em;white-space:nowrap}
+  .panel{position:relative;width:100%;padding:18px 16px 20px;
+         display:flex;flex-direction:column;gap:13px;border:1px solid rgba(111,170,160,.16);
+         background:linear-gradient(145deg,rgba(13,29,32,.72),rgba(4,12,17,.82));
+         box-shadow:0 22px 70px rgba(0,0,0,.42),inset 0 0 45px rgba(70,145,135,.035);
+         clip-path:polygon(13px 0,calc(100% - 13px) 0,100% 13px,100% calc(100% - 13px),calc(100% - 13px) 100%,13px 100%,0 calc(100% - 13px),0 13px)}
   .row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
   .chip{font:inherit;font-size:12px;letter-spacing:.1em;padding:7px 12px;border-radius:2px;cursor:pointer;
         background:rgba(16,34,40,.45);color:#89aeb2;border:1px solid var(--line);transition:.22s}
@@ -123,7 +141,10 @@
        font-size:11px;color:#557179;letter-spacing:.1em}
   .log span{padding:2px 7px;border:1px solid rgba(110,170,165,.12);border-radius:2px}
   .log span:first-child{color:#9fd0d0;border-color:rgba(120,220,215,.26)}
-  footer{position:relative;z-index:2;font-size:9.5px;color:#33484f;letter-spacing:.18em;padding-bottom:20px;text-align:center}
+  footer{position:relative;z-index:2;font-size:9.5px;color:#33484f;letter-spacing:.18em;padding:16px 0 20px;text-align:center}
+  .corner{position:fixed;z-index:2;width:90px;height:90px;opacity:.16;pointer-events:none}
+  .corner.tl{left:12px;top:12px}.corner.br{right:12px;bottom:12px;transform:rotate(180deg)}
+  .corner path{fill:none;stroke:#79bdb3;stroke-width:1}
 
   /* 키보드 포커스 */
   .chip:focus-visible,.btn:focus-visible,.skillBox input:focus-visible,.stage:focus-visible{
@@ -142,8 +163,11 @@
 
 <canvas id="abyss"></canvas>
 <div id="flash"></div>
+<svg class="corner tl" viewBox="0 0 100 100" aria-hidden="true"><path d="M2 42V2h40M8 35V8h27M14 28V14h14M2 58c20 0 40-18 40-40M8 63c28 0 55-27 55-55"/></svg>
+<svg class="corner br" viewBox="0 0 100 100" aria-hidden="true"><path d="M2 42V2h40M8 35V8h27M14 28V14h14M2 58c20 0 40-18 40-40M8 63c28 0 55-27 55-55"/></svg>
 
 <header>
+  <svg class="sigil" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 3 38 22 58 16 43 31 59 45 38 41 32 61 26 41 5 45 21 31 6 16 26 22Z" fill="none" stroke="currentColor"/><circle cx="32" cy="32" r="8" fill="none" stroke="currentColor"/><path d="M28 32q4-7 8 0-4 7-8 0Z" fill="currentColor"/></svg>
   <h1>Dice Potion</h1>
   <p class="rlyeh">ph'nglui mglw'nafh cthulhu r'lyeh wgah'nagl fhtagn</p>
   <p class="sub">심연에서 건져 올린 금단의 시약</p>
@@ -164,6 +188,7 @@
   <div class="whisper" id="whisper"></div>
 </div>
 
+<div class="panelWrap">
 <div class="panel">
   <div class="row" id="modes"></div>
   <div class="skillBox" id="skillBox">
@@ -177,6 +202,7 @@
   </div>
   <p class="note" id="note">병을 잡고 흔들거나 · 길게 눌러 흔들기 · Space</p>
   <div class="log" id="log"></div>
+</div>
 </div>
 
 <footer>CoC 7th · crypto RNG</footer>
@@ -896,6 +922,15 @@ function drawLabel(){
 }
 function drawGlass(){
   ctx.save();
+  // 오래된 약병의 두꺼운 바닥과 유리 이음선
+  ctx.save(); ctx.clip(PATH);
+  const base = ctx.createLinearGradient(0, H * .88, 0, H * .96);
+  base.addColorStop(0, "rgba(130,215,205,0)");
+  base.addColorStop(1, "rgba(130,215,205,.16)");
+  ctx.fillStyle = base; ctx.fillRect(W * .14, H * .87, W * .72, H * .1);
+  ctx.strokeStyle = "rgba(180,235,226,.08)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W * .5, H * .15); ctx.lineTo(W * .5, H * .92); ctx.stroke();
+  ctx.restore();
   ctx.strokeStyle = "rgba(160,225,225,.28)"; ctx.lineWidth = 3.2; ctx.stroke(PATH);
   ctx.strokeStyle = "rgba(220,255,255,.10)"; ctx.lineWidth = 8;   ctx.stroke(PATH);
 
@@ -927,6 +962,17 @@ function drawGlass(){
   ctx.closePath();
   ctx.fillStyle = "rgba(74,18,20,.82)"; ctx.fill();
   drawElderSign(ctx, W * .5, H * .118, H * .016, .5);
+
+  // 목을 감싼 낡은 봉인 끈
+  ctx.strokeStyle = "rgba(98,72,42,.82)"; ctx.lineWidth = 2.2;
+  for (let i = 0; i < 4; i++){
+    ctx.beginPath();
+    ctx.moveTo(W * .405, H * (.205 + i * .012));
+    ctx.quadraticCurveTo(W * .5, H * (.218 + i * .008), W * .595, H * (.205 + i * .012));
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(55,35,20,.9)";
+  ctx.beginPath(); ctx.arc(W * .59, H * .242, 3.2, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 function drawGlow(){
@@ -1023,6 +1069,22 @@ function drawAbyss(t){
   }
   bctx.restore();
 
+  // 물속에 잠긴 르뤼에의 기하학 — 수직선이 화면의 깊이를 만든다
+  bctx.save();
+  bctx.globalAlpha = .13 + S.dread * .06;
+  bctx.fillStyle = "#020708";
+  const horizon = BH * .64;
+  for (let i = -2; i < 8; i++){
+    const x = BW * (i / 6) + Math.sin(i * 3.1) * 20;
+    const w = BW * (.08 + (i % 3) * .018);
+    const top = horizon - BH * (.08 + ((i * 7) % 5) * .035);
+    bctx.beginPath();
+    bctx.moveTo(x, BH); bctx.lineTo(x + w * .12, top);
+    bctx.lineTo(x + w * .92, top - w * .18); bctx.lineTo(x + w, BH); bctx.closePath(); bctx.fill();
+    bctx.strokeStyle = "rgba(77,139,132,.22)"; bctx.lineWidth = 1; bctx.stroke();
+  }
+  bctx.restore();
+
   drawTitan(t);
 
   // 부유물
@@ -1042,6 +1104,21 @@ function drawAbyss(t){
   v.addColorStop(0, "rgba(0,0,0,0)");
   v.addColorStop(1, `rgba(${S.dread > .5 ? 20 : 0},0,0,.72)`);
   bctx.fillStyle = v; bctx.fillRect(0, 0, BW, BH);
+
+  // 렌즈 바로 앞을 스치는 전경 촉수. 중앙 병은 가리지 않는다.
+  bctx.save();
+  bctx.strokeStyle = `rgba(0,3,4,${.48 + S.dread * .22})`;
+  bctx.lineCap = "round";
+  for (let side = -1; side <= 1; side += 2){
+    bctx.beginPath(); bctx.lineWidth = Math.max(28, BW * .055);
+    const sx = side < 0 ? -BW * .04 : BW * 1.04;
+    bctx.moveTo(sx, BH * .92);
+    bctx.bezierCurveTo(sx - side * BW * .04, BH * .72,
+      sx - side * BW * (.13 + Math.sin(t * .00035) * .025), BH * .56,
+      sx - side * BW * .08, BH * .38);
+    bctx.stroke();
+  }
+  bctx.restore();
 }
 
 /* ================= 루프 ================= */

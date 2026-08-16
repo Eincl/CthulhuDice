@@ -23,6 +23,7 @@
     padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     overflow-x:hidden;user-select:none;-webkit-user-select:none;
     touch-action:manipulation;
+    overscroll-behavior-y:contain;   /* iOS 당겨서 새로고침이 흔들기를 가로채지 않게 */
   }
   #abyss{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
   body::after{ /* 필름 그레인 */
@@ -48,7 +49,13 @@
   .rlyeh{margin:7px 0 0;font-size:9.5px;letter-spacing:.3em;color:#3f5f63;text-indent:.3em;font-style:italic}
   .sub{margin:4px 0 0;font-size:11px;letter-spacing:.22em;color:var(--dim);text-indent:.22em}
 
-  .stage{position:relative;z-index:2;width:min(92vw,380px);aspect-ratio:.62;margin:0;cursor:grab}
+  .stage{
+    position:relative;z-index:2;margin:0;cursor:grab;
+    /* 높이를 기준으로 잡고 폭을 계산한다. aspect-ratio에 기대지 않아 구버전에서도 안전하다 */
+    --sh:min(54vh, calc(86vw / .62), 600px);
+    height:var(--sh);width:calc(var(--sh) * .62);
+    touch-action:none;   /* 드래그가 페이지 스크롤로 먹히는 걸 막는다 */
+  }
   .stage:active{cursor:grabbing}
   canvas{display:block;width:100%;height:100%}
 
@@ -164,6 +171,7 @@
     <input id="skillValue" type="number" min="1" max="100" placeholder="기능치" inputmode="numeric">
   </div>
   <div class="actions">
+    <button class="btn" id="motionBtn" hidden>센서 허용</button>
     <button class="btn" id="shakeBtn">병 흔들기</button>
     <button class="btn icoBtn" id="soundBtn" aria-pressed="false" title="소리">♪</button>
   </div>
@@ -398,13 +406,15 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => { if (e.code === "Space") holding = false; });
 
 /* 디바이스 모션 */
-let lastAcc = null;
+let lastAcc = null, motionSeen = false;
 function onMotion(e){
   const a = e.accelerationIncludingGravity || e.acceleration;
   if (!a || a.x == null) return;
+  motionSeen = true;
   if (lastAcc){
+    // 정지 시 노이즈는 0.2 안팎이라 1.6이면 충분히 안전하다
     const d = Math.hypot(a.x - lastAcc.x, a.y - lastAcc.y, a.z - lastAcc.z);
-    if (d > 2.2) addEnergy(Math.min(.34, (d - 2.2) * .035));
+    if (d > 1.6) addEnergy(Math.min(.34, (d - 1.6) * .05));
   }
   lastAcc = { x:a.x, y:a.y, z:a.z };
 }
@@ -413,27 +423,34 @@ function onOrient(e){
   const g = Math.max(-45, Math.min(45, e.gamma));
   S.slope += (g * .0022 - S.slope) * .08;
 }
-function enableMotion(){
-  const DM = window.DeviceMotionEvent;
-  if (DM && typeof DM.requestPermission === "function"){
-    DM.requestPermission().then((r) => {
-      if (r === "granted"){
-        window.addEventListener("devicemotion", onMotion);
-        window.addEventListener("deviceorientation", onOrient);
-        $("note").textContent = "휴대폰을 직접 흔들어 심연을 깨워라";
-      }
-    }).catch(() => {});
-  } else if (DM){
-    window.addEventListener("devicemotion", onMotion);
-    window.addEventListener("deviceorientation", onOrient);
-  }
+function attachMotion(){
+  window.addEventListener("devicemotion", onMotion);
+  window.addEventListener("deviceorientation", onOrient);
 }
+/* iOS는 사용자 제스처 안에서 직접 요청해야만 권한 창이 뜬다 */
+const motionBtn = $("motionBtn");
 if (window.DeviceMotionEvent && typeof window.DeviceMotionEvent.requestPermission === "function"){
-  $("note").textContent = "탭하여 모션 센서 허용 · 또는 병을 드래그";
-  const once = () => { enableMotion(); document.removeEventListener("pointerdown", once); };
-  document.addEventListener("pointerdown", once);
-} else {
-  enableMotion();
+  motionBtn.hidden = false;
+  $("note").textContent = "센서를 허용하면 휴대폰을 흔들어 굴릴 수 있다";
+  motionBtn.addEventListener("click", () => {
+    // requestPermission은 반드시 이 핸들러 안에서 동기적으로 호출해야 한다
+    window.DeviceMotionEvent.requestPermission().then((res) => {
+      if (res !== "granted"){
+        $("note").textContent = "설정 › Safari › 동작 및 방향 접근 을 켠 뒤 다시 시도";
+        return;
+      }
+      attachMotion();
+      motionBtn.hidden = true;
+      $("note").textContent = "휴대폰을 흔들어 심연을 깨워라";
+      setTimeout(() => {
+        if (!motionSeen) $("note").textContent = "센서 신호가 없다 · 병을 드래그해 흔들어라";
+      }, 3000);
+    }).catch(() => {
+      $("note").textContent = "센서를 열 수 없다 · 병을 드래그해 흔들어라";
+    });
+  });
+} else if (window.DeviceMotionEvent){
+  attachMotion();
 }
 
 /* ================= 오디오 ================= */

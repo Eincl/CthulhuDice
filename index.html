@@ -453,30 +453,51 @@ function attachMotion(){
   window.addEventListener("devicemotion", onMotion);
   window.addEventListener("deviceorientation", onOrient);
 }
-/* iOS는 사용자 제스처 안에서 직접 요청해야만 권한 창이 뜬다 */
+/* iOS는 권한 상태를 미리 읽을 방법이 없다. Permissions API가 모션 센서를
+   지원하지 않고, requestPermission은 반드시 사용자 제스처 안에서 동기적으로
+   호출해야 한다. 그래서 별도 버튼을 누르게 하는 대신 첫 조작(병을 탭하는
+   순간)에 요청을 얹고, 거부됐을 때만 안내와 재시도 버튼을 드러낸다. */
 const motionBtn = $("motionBtn");
-if (window.DeviceMotionEvent && typeof window.DeviceMotionEvent.requestPermission === "function"){
-  motionBtn.hidden = false;
-  $("note").textContent = "센서를 허용하면 휴대폰을 흔들어 굴릴 수 있다";
-  motionBtn.addEventListener("click", () => {
-    // requestPermission은 반드시 이 핸들러 안에서 동기적으로 호출해야 한다
-    window.DeviceMotionEvent.requestPermission().then((res) => {
-      if (res !== "granted"){
-        $("note").textContent = "설정 › Safari › 동작 및 방향 접근 을 켠 뒤 다시 시도";
-        return;
-      }
-      attachMotion();
-      motionBtn.hidden = true;
-      $("note").textContent = "휴대폰을 흔들어 심연을 깨워라";
-      setTimeout(() => {
-        if (!motionSeen) $("note").textContent = "센서 신호가 없다 · 병을 드래그해 흔들어라";
-      }, 3000);
-    }).catch(() => {
-      $("note").textContent = "센서를 열 수 없다 · 병을 드래그해 흔들어라";
-    });
-  });
-} else if (window.DeviceMotionEvent){
+const NEED_ASK = !!(window.DeviceMotionEvent &&
+                    typeof window.DeviceMotionEvent.requestPermission === "function");
+let motionAsked = false, motionOn = false;
+const setNote = (t) => { $("note").textContent = t; };
+
+function grantMotion(){
   attachMotion();
+  motionOn = true;
+  motionBtn.hidden = true;
+  setNote("휴대폰을 흔들어 심연을 깨워라");
+  setTimeout(() => {
+    if (!motionSeen) setNote("센서 신호가 없다 · 병을 드래그해 흔들어라");
+  }, 3000);
+}
+
+function ensureMotion(){
+  if (!NEED_ASK || motionAsked || motionOn) return;
+  motionAsked = true;
+  // 이 호출은 제스처 핸들러 안에서 동기적으로 일어나야 권한 창이 뜬다
+  window.DeviceMotionEvent.requestPermission().then((res) => {
+    if (res === "granted"){ grantMotion(); return; }
+    motionAsked = false;                       // 다시 시도할 수 있게 되돌린다
+    motionBtn.hidden = false;
+    setNote("설정 › Safari › 동작 및 방향 접근 을 켠 뒤 다시 허용");
+  }).catch(() => {
+    motionAsked = false;
+    motionBtn.hidden = false;
+    setNote("센서를 열 수 없다 · 병을 드래그해 흔들어라");
+  });
+}
+
+if (NEED_ASK){
+  setNote("병을 탭하면 흔들기 센서가 켜진다");
+  elHint.textContent = "탭해서 깨워라";
+  // click이 iOS가 가장 확실하게 사용자 제스처로 인정하는 이벤트다
+  stage.addEventListener("click", ensureMotion);
+  holdBtn.addEventListener("click", ensureMotion);
+  motionBtn.addEventListener("click", ensureMotion);
+} else if (window.DeviceMotionEvent){
+  attachMotion();   // 안드로이드 등은 권한 절차 없이 바로 쓴다
 }
 
 /* ================= 오디오 ================= */
@@ -621,7 +642,8 @@ function resetReadout(){
   S.phase = "idle"; S.result = null; S.glow = 0; S.tint = TINT.plain;
   elValue.textContent = "?"; elValue.className = "value"; elValue.style.opacity = ".5";
   elVLabel.className = "vLabel"; elVDetail.className = "vDetail"; elWhisper.className = "whisper";
-  elHint.style.opacity = "1"; elHint.textContent = "흔들어 깨워라";
+  elHint.style.opacity = "1";
+  elHint.textContent = (NEED_ASK && !motionOn) ? "탭해서 깨워라" : "흔들어 깨워라";
 }
 elValue.style.opacity = ".5";
 
